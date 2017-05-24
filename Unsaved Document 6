@@ -1,0 +1,71 @@
+#ifndef ARMS_H
+#define ARMS_H
+
+#include <QMainWindow>
+#include <QThread>
+#include <./Headers/menuworker.h>
+#include <./Headers/sysStatMon.h>
+#include <./Headers/armsSettings.h>
+#include <QStatusBar>
+#include <QDebug>
+#include <QString>
+#include <QFileDialog>
+#include <QLabel>
+#include <./Headers/dataAnalysis.h>
+#include <QMetaType>
+#include  <QLayout>
+#include <QDateTime>
+#include <QPrinter>
+namespace Ui {
+class arms;
+}
+
+class arms : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    explicit arms(QWidget *parent = 0);
+    ~arms();
+
+
+private slots:
+    void on_actionSave_triggered();
+
+    void on_actionOpen_triggered();
+
+    void on_actionPrint_triggered();
+
+    void on_actionOptions_triggered();
+
+    void on_actionAbout_triggered();
+
+    void handleFileNames(QStringList mylist);
+   // void filePrintPreview();            // display print preview dialog
+  //  void filePrint();                   // display print dialog
+  //  void print( QPrinter* );            // draw print page
+   // void printImage(QPrinter* printer);
+    //void printPreview(QPrinter *myprint);
+   // void on_logScale_toggled(bool checked);
+ // void on_linearScale_toggled(bool checked);
+
+signals:
+    Q_SIGNAL void valueChanged(const QString &value);
+    Q_SIGNAL void returnStatus(const QString &value);
+    Q_SIGNAL void sendToPrinter(QPrinter*);
+private:
+    Ui::arms *ui;
+    sysStatMon *monHwdStatus;
+    QCustomPlot *customPlot;
+    armsSettings *settings;
+    dataAnalysis *analysisGraph;
+    int myval;
+    QLabel *update;
+    QLabel *conUpdate;
+    QThread *thread;
+    menuWorker *worker;
+    QPrinter *graphPrinter;
+};
+
+#endif // ARMS_H
+

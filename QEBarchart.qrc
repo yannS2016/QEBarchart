@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/qe/barchart">
+        <file>QEBarchart.png</file>
+        <file>QEScalarBarchart.png</file>
+    </qresource>
+</RCC>

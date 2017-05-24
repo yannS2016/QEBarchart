@@ -1,0 +1,59 @@
+const QString filename = "/home/vcs-arms/ARMS/bin/linux-x86_64/test4.pdf";
+    const QString printerName = "HP-LaserJet-400-color-M451dw-2";
+
+    graphPrinter = new QPrinter(QPrinter::HighResolution);
+    graphPrinter->setPrinterName(printerName);
+    graphPrinter->setOutputFormat(QPrinter::PdfFormat);
+    graphPrinter->setOrientation(QPrinter::Landscape);
+    graphPrinter->setPaperSize(QPrinter::A4);
+    graphPrinter->setPaperSource(QPrinter::Auto);
+    graphPrinter->setFullPage(true);
+    graphPrinter->setPageMargins (15,15,15,15,QPrinter::Millimeter);
+    //graphPrinter->setOutputFileName(filename);
+    graphPrinter->setDocName("Dose rate print-out");
+    graphPrinter->setOutputFormat(QPrinter::NativeFormat);
+
+    if (!graphPrinter->isValid())
+        qDebug("Printer is invalid!");
+
+    QPixmap printGraph(ui->hist->width(),ui->hist->height());
+    QPixmap printValueDisp1(ui->valueDisp1->width(),ui->valueDisp1->height());
+    QPixmap printValueDisp2(ui->valueDisp2->width(),ui->valueDisp2->height());
+
+
+
+    int printerWidth  = graphPrinter->pageRect().width();
+    int printerHeight = graphPrinter->pageRect().height();
+    int xscale = printerWidth/(ui->hist->width());
+    int yscale = printerHeight/(ui->hist->height());
+    int scale = qMin(xscale, yscale);
+
+    int w = graphPrinter->pageRect().width();
+    int h = graphPrinter->pageRect().height();
+    QRect page(0, 0, w, h );
+
+     ui->hist->render(&printGraph,QPoint(),QRegion(0,0,ui->hist->width(),ui->hist->height()));
+     ui->valueDisp1->render(&printValueDisp1,QPoint(),QRegion(0,0,ui->valueDisp1->width(),ui->valueDisp1->height()));
+     ui->valueDisp2->render(&printValueDisp2,QPoint(),QRegion(0,0,ui->valueDisp2->width(),ui->valueDisp2->height()));
+
+     painter = new QPainter(graphPrinter);
+   //  if (! painter->begin(graphPrinter)) { // failed to open file
+   //      qWarning("failed to open file, is it writable?");
+    //    // return 1;
+   //  }
+    //painter->begin(graphPrinter);
+     painter->drawText( page, Qt::AlignBottom | Qt::AlignRight,QDateTime::currentDateTime().toString( Qt::DefaultLocaleShortDate ) );
+     painter->scale(scale, yscale-2);
+
+    // painter->drawPixmap(10,10,printValueDisp1);
+    // painter->drawPixmap(10,70,printValueDisp2); // here we nned to know the exact sizes of the widget
+     //painter->scale(scale, yscale);
+     //painter->drawPixmap(10,140,printGraph);
+     painter->end();
+    // DEBUG << xscale yscale;
+
+
+
+        //painter.drawPixmap(graphPrinter.pageRect().topLeft(), printGraph, printGraph.rect());
+
+  //  }

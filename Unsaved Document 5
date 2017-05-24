@@ -1,0 +1,172 @@
+#include "./Headers/arms.h"
+#include "ui_arms.h"
+#include "./Headers/miscVars.h"
+#include <QPrintDialog>
+#include <QPrintPreviewDialog>
+const QString basePath = getenv("ARMS_ROOT");
+arms::arms(QWidget *parent) :
+    QMainWindow(parent),
+    ui(new Ui::arms)
+{
+    ui->setupUi(this);
+    this->setWindowTitle("Arms-v1.0");
+    settings = NULL;// initialise this pointer to null so it can be use to test for setting window open or not
+    //graphPrinter = NULL;
+    // an error was return because it is pointing to nothing
+    /*************User interface worker class***************/
+    thread = new QThread();
+    worker = new menuWorker();
+    /************ Call the graph update object **************/
+    monHwdStatus = new sysStatMon(ui->disparea, this);
+    /********** Optional user update ***********************/
+    update = new QLabel();
+    conUpdate = new QLabel();
+    ui->statusBar->addPermanentWidget(conUpdate,1);
+    ui->statusBar->addPermanentWidget(update,1);
+    conUpdate->setAlignment(Qt::AlignLeft);
+    update->setAlignment(Qt::AlignRight);
+    /****** *****setup the analysis graph *****************/
+    customPlot = new QCustomPlot();
+    QVBoxLayout *ver = new QVBoxLayout();
+    ver->addWidget(customPlot);
+    ui->custPlot->setLayout(ver);
+    analysisGraph = new dataAnalysis(this);
+    analysisGraph->setupPlotArea(customPlot); // initialise the data analysis graphic area
+    /*************************************************************************/
+    worker->moveToThread(thread);
+    connect(thread, SIGNAL(started()), worker, SLOT(mainLoop()));
+    connect(worker, SIGNAL(finished()), thread, SLOT(quit()), Qt::DirectConnection);
+    connect(this, SIGNAL(returnStatus(QString)),   update, SLOT(setText(QString)));
+    connect(worker, SIGNAL(workerStatus(QString)), update, SLOT(setText(QString)));
+    connect(monHwdStatus, SIGNAL(conStatus(QString)), conUpdate,SLOT(setText(QString)));
+    connect(monHwdStatus, SIGNAL(acqStatus(QString)), update,SLOT(setText(QString)));
+    // register the Qvector data type as a Meta object so we  use it in signal and slot connections
+    qRegisterMetaType <_2DVector>("_2DVector");
+    qDebug()<<"Starting thread in Thread "<<this->QObject::thread()->currentThreadId();
+    connect(worker, SIGNAL(filevalue( _2DVector)), analysisGraph, SLOT(initData( _2DVector)));//only specify data type no ref
+    thread->start();
+    /******************************* Quit Application upon exit **************************************/
+    connect(ui->actionExit,SIGNAL(triggered(bool)),this, SLOT(close()));
+    /********************************Handle limit change events***************************************/
+
+}
+arms::~arms()
+{
+    delete ui;
+    //delete settings;// trying to delete something that was not created memory problem
+    worker->abort();
+    thread->wait();
+    DEBUG <<"Deleting thread and worker in Thread "<<this->QObject::thread()->currentThreadId();
+    delete thread;
+    delete worker;
+}
+
+void arms::on_actionSave_triggered()
+{
+    worker->requestSaveMethod(menuWorker::Save,monHwdStatus->ChannelData());
+}
+
+void arms::on_actionOpen_triggered()
+{
+    QStringList files = QFileDialog::getOpenFileNames(this,"Select File",basePath+"/bin/log/","Text File(*.txt)");
+    if(!(files.isEmpty()) && (files.size() > 1))// this condition was updated -> a NUMFILES should be created
+    {
+        worker->requestOpenMethod(menuWorker::Open, files);
+    }
+    else {return;}
+}
+
+void arms::on_actionPrint_triggered()
+{
+
+//filePrintPreview();
+}
+
+void arms::on_actionOptions_triggered()
+{
+    if(!settings)
+    {
+        settings = new armsSettings(this);
+        connect(settings,SIGNAL(filesList(QStringList)),this,SLOT(handleFileNames(QStringList)));
+       /* connect(settings,SIGNAL(hLimit(QString)),monHwdStatus,SLOT(acqHLimit(QString)));
+        connect(settings,SIGNAL(lLimit(QString)),monHwdStatus,SLOT(acqLLimit(QString)));
+        connect(settings,SIGNAL(looprate(QString)),monHwdStatus,SLOT(setLoopRate(QString)));*/
+    }
+    settings->show();
+    settings->activateWindow();
+
+}
+
+void arms::on_actionAbout_triggered()
+{
+    QMessageBox::about(this, tr("About ARMS"),
+    tr("<h2>ARMS 1.0</h2>"
+    "<p>Copyright &copy; 2015 tlabs."
+    "<p>ARMS is an application that monitor and analyses radiation under"
+    " the tlabs beam line,the data is display in graphic and tabular way. "
+    " A setting window is provided to adjust the acquistion settings."
+    " The user is required to login as either an Operator, Engineer or Scientist."
+    " Level of control is accessible depending on user type"));
+}
+// open setting dialog emit  files names and passed them to menuworker
+void arms:: handleFileNames(QStringList mylist)
+{
+    worker->requestOpenMethod(menuWorker::Open, mylist);
+}
+
+/*void arms::on_logScale_toggled(bool id)
+{
+    this->ui->hist->setLogScale(id);
+}*/
+
+/*void arms::on_linearScale_toggled(bool id)
+{
+   this->ui->hist->setLogScale(!id);
+   this->ui->hist->setScaleMode(QEScalarBarchart::Manual);
+}*/
+/*void  arms::filePrintPreview()
+{
+  // display print preview dialog
+  QPrinter             printer( QPrinter::HighResolution );
+  QPrintPreviewDialog  preview( &printer, this );
+  connect( &preview, SIGNAL(paintRequested(QPrinter*)), SLOT(print(QPrinter*)) );
+  preview.exec();
+}
+
+
+void  arms::filePrint()
+{
+  // display print dialog and if accepted print
+  QPrinter       printer( QPrinter::HighResolution );
+  QPrintDialog   dialog( &printer, this );
+  if ( dialog.exec() == QDialog::Accepted ) print( &printer );
+}
+
+void  arms::print( QPrinter* printer )
+{
+  // create painter for drawing print page
+  QPainter painter( printer );
+  int      w = printer->pageRect().width();
+  int      h = printer->pageRect().height();
+  QRect    page( 0, 0, w, h );
+
+  // create a font appropriate to page size
+  QFont    font = painter.font();
+  font.setPixelSize( (w+h) / 100 );
+  painter.setFont( font );
+
+  // draw labels in corners of page
+  painter.drawText( page, Qt::AlignTop    | Qt::AlignLeft, "QSimulate" );
+  painter.drawText( page, Qt::AlignBottom | Qt::AlignLeft, QString(getenv("USER")) );
+  painter.drawText( page, Qt::AlignBottom | Qt::AlignRight,
+                    QDateTime::currentDateTime().toString( Qt::DefaultLocaleShortDate ) );
+
+  // draw simulated landscape
+  //page.adjust( w/20, h/20, -w/20, -h/20 );
+  //m_scene->render( &painter, page );
+}*/
+
+
+
+
+

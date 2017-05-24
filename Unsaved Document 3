@@ -1,0 +1,81 @@
+void arms::printImage(QPrinter* printer)
+{
+
+    ///Error: QPainter::begin: A paint device can only be painted by one painter at a time.
+    /*
+
+    Note that most of the time, you can use one of the constructors instead of begin(), and that end() is automatically done at destruction.
+
+    Warning: A paint device can only be painted by one painter at a time.
+
+    So, if you use painter = QPainter(self) to construct a painter, then it will be unnecessary to call begin() and end(). This will be duplicated.*/
+
+    const QString filename = "/home/vcs-arms/ARMS/bin/linux-x86_64/test6.pdf";
+
+  //  printer = new QPrinter(QPrinter::HighResolution);
+    printer->setOutputFormat(QPrinter::PdfFormat);
+    printer->setOrientation(QPrinter::Landscape);
+    printer->setPaperSize(QPrinter::A4);
+    printer->setPaperSource(QPrinter::Auto);
+    printer->setFullPage(true);
+    printer->setPageMargins (15,15,15,15,QPrinter::Millimeter);
+    printer->setOutputFileName(filename);
+    printer->setDocName("Dose rate print-out");
+    //graphPrinter->setOutputFormat(QPrinter::NativeFormat);
+
+        if (!printer->isValid())
+            qDebug("Printer is invalid!");
+
+        QPixmap printGraph(ui->hist->width(),ui->hist->height());
+        QPixmap printValueDisp1(ui->valueDisp1->width(),ui->valueDisp1->height());
+        QPixmap printValueDisp2(ui->valueDisp2->width(),ui->valueDisp2->height());
+
+
+
+        int printerWidth  = printer->pageRect().width();
+        int printerHeight = printer->pageRect().height();
+        int xscale = printerWidth/(ui->hist->width());
+        int yscale = printerHeight/(ui->hist->height());
+        int scale = qMin(xscale, yscale);
+
+        int w = printer->pageRect().width();
+        int h = printer->pageRect().height();
+        QRect page(0, 0, w, h );
+
+         ui->hist->render(&printGraph,QPoint(),QRegion(0,0,ui->hist->width(),ui->hist->height()));
+         ui->valueDisp1->render(&printValueDisp1,QPoint(),QRegion(0,0,ui->valueDisp1->width(),ui->valueDisp1->height()));
+         ui->valueDisp2->render(&printValueDisp2,QPoint(),QRegion(0,0,ui->valueDisp2->width(),ui->valueDisp2->height()));
+         QPainter painter;
+        // painter = new QPainter(graphPrinter);
+        if (! painter.begin(printer)) { // failed to open file
+             qWarning("failed to open file, is it writable?");
+            // return 1;
+        }else {
+         painter.setRenderHint(QPainter::Antialiasing);
+         painter.drawText( page, Qt::AlignBottom | Qt::AlignRight,QDateTime::currentDateTime().toString( Qt::DefaultLocaleShortDate ) );
+         painter.scale(scale, yscale-2);
+
+        // painter.drawPixmap(10,10,printValueDisp1);
+        // painter.drawPixmap(10,70,printValueDisp2); // here we nned to know the exact sizes of the widget
+         //painter.scale(scale, yscale);
+         //painter.drawPixmap(10,140,printGraph);
+        }
+         painter.end();
+        // DEBUG << xscale yscale;
+
+
+
+}
+void arms::printPreview(QPrinter* myprint)
+{
+   //connect(this, SIGNAL(sendToPrinter()), this, SLOT(printImage()), Qt::DirectConnection);
+    if(paintOk) {
+
+        QPrintPreviewDialog  preview(myprint, this );
+        connect( &preview, SIGNAL(paintRequested(QPrinter*)), SLOT(printImage(QPrinter*)) );
+        preview.exec();
+    }
+    paintOk = false;
+
+
+}

@@ -1,0 +1,9 @@
+void arms::on_actionPrint_triggered()
+{
+
+    paintOk = true;
+    graphPrinter = new QPrinter(QPrinter::HighResolution);
+    emit sendToPrinter(graphPrinter);
+    connect(this, SIGNAL(sendToPrinter(QPrinter*)), this, SLOT(printPreview(QPrinter*)), Qt::DirectConnection);
+
+}
